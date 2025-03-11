@@ -3,17 +3,25 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
+	"github.com/yashmohod/server/middleware"
 	"github.com/yashmohod/server/models"
 	"github.com/yashmohod/server/routes/location"
 	"github.com/yashmohod/server/routes/user"
 )
 
 func main() {
+	// establishing connection to database
+	models.ConnectDatabase()
+	// makes sure to terminate connection to database after main ends
+	defer models.DisconnectDatabase()
 
+	// api server init
 	mux := http.NewServeMux()
 
+	// healthCheck
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
 		fmt.Println("Got a hit!")
@@ -25,9 +33,20 @@ func main() {
 		json.NewEncoder(w).Encode(resp)
 	})
 
+	// routes
 	mux.HandleFunc("/user", user.HandelUserRequest)
+	mux.HandleFunc("POST /login", user.Login)
+	mux.HandleFunc("POST /logout", user.Logout)
 	mux.HandleFunc("/location", location.HandelLocationRequest)
 
-	fmt.Println(http.ListenAndServe("localhost:8080", mux))
+	// starting api server
+	log.Println("Server starting...")
+	log.Print("Listening on :8000...")
+	server := http.Server{
+		Addr:    ":8000",
+		Handler: middleware.Logging(mux),
+	}
+	err := server.ListenAndServe()
+	log.Fatal(err)
 
 }

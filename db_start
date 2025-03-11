@@ -1,0 +1,1 @@
+mongod --dbpath /opt/homebrew/var/mongodb --logpath /opt/homebrew/var/log/mongodb/mongodb.log 
