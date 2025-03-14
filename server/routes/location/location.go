@@ -98,6 +98,7 @@ func GetLocation(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
+		log.Println(locations)
 		json.NewEncoder(w).Encode(locations)
 	} else {
 		er := http.StatusUnauthorized
@@ -108,29 +109,40 @@ func GetLocation(w http.ResponseWriter, r *http.Request) {
 
 func EditLocationInfo(w http.ResponseWriter, r *http.Request) {
 	if user.Authorize(r) {
+
 		curLocation, err := models.GetLocation(r.FormValue("locationId"))
 		if err != nil {
 			er := http.StatusNotFound
-			http.Error(w, "User not found!", er)
-			return
-		}
-		latitude, err := strconv.ParseFloat(r.FormValue("latitude"), 64)
-		longitude, er := strconv.ParseFloat(r.FormValue("longitude"), 64)
-		if err != nil || er != nil {
-			log.Println(err, er)
-			er := http.StatusConflict
-			http.Error(w, "Latitude or longitude contain forbidden chars!", er)
+			http.Error(w, err.Error(), er)
 			return
 		}
 
 		if r.FormValue("name") != "" && r.FormValue("name") != curLocation.Name {
 			curLocation.Name = r.FormValue("name")
 		}
-		if r.FormValue("latitude") != "" && latitude != curLocation.Latitude {
-			curLocation.Latitude = latitude
+		if r.FormValue("latitude") != "" {
+			latitude, err := strconv.ParseFloat(r.FormValue("latitude"), 64)
+			if err != nil {
+				log.Println(err)
+				er := http.StatusConflict
+				http.Error(w, "Latitude or longitude contain forbidden chars!", er)
+				return
+			}
+			if latitude != curLocation.Latitude {
+				curLocation.Latitude = latitude
+			}
 		}
-		if r.FormValue("longitude") != "" && longitude != curLocation.Longitude {
-			curLocation.Longitude = longitude
+		if r.FormValue("longitude") != "" {
+			longitude, er := strconv.ParseFloat(r.FormValue("longitude"), 64)
+			if er != nil {
+				log.Println(er)
+				er := http.StatusConflict
+				http.Error(w, "Latitude or longitude contain forbidden chars!", er)
+				return
+			}
+			if longitude != curLocation.Longitude {
+				curLocation.Longitude = longitude
+			}
 		}
 
 		err = models.UpdateLocation(curLocation)
@@ -143,7 +155,7 @@ func EditLocationInfo(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		tokens := models.Response{
-			Message: "User info updated!",
+			Message: "Location info updated!",
 			Payload: "",
 		}
 		json.NewEncoder(w).Encode(tokens)
@@ -156,5 +168,32 @@ func EditLocationInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteLocation(w http.ResponseWriter, r *http.Request) {
-	panic("unimplemented")
+	if user.Authorize(r) {
+		curLocation, err := models.GetLocation(r.FormValue("locationId"))
+		if err != nil {
+			er := http.StatusNotFound
+			http.Error(w, err.Error(), er)
+			return
+		}
+
+		err = models.DelteleLocation(curLocation.Id)
+		if err != nil {
+			log.Println(err)
+			er := http.StatusNotModified
+			http.Error(w, "Unable to delete location!", er)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+
+		tokens := models.Response{
+			Message: "Location info deleted!",
+			Payload: "",
+		}
+		json.NewEncoder(w).Encode(tokens)
+
+	} else {
+		er := http.StatusUnauthorized
+		http.Error(w, "Unauthorized!", er)
+		return
+	}
 }

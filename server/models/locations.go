@@ -48,9 +48,14 @@ func GetLocations() ([]Location, error) {
 
 func GetLocation(locationId string) (Location, error) {
 	collection := client.Database(db).Collection("location")
-	filter := bson.M{"_id": locationId}
+	uid, er := uuid.Parse(locationId)
+	if er != nil {
+		log.Println(er)
+		return Location{}, er
+	}
+	filter := bson.M{"_id": uid}
 	var result Location
-	err := collection.FindOne(context.Background(), filter).Decode(&result)
+	err := collection.FindOne(context.TODO(), filter).Decode(&result)
 
 	if err != nil {
 		log.Println(err)
